@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -246,4 +247,241 @@ const refreshAccessToken = asyncHandler( async (req, res)=>{
     ))
 
 })
-    export {registerUser, loginUser, logoutUser, refreshAccessToken}
+
+const changeCurrentPassword = asyncHandler( async (req, res)=>{
+    // take old and new password from user 
+    // validate it
+    // take user id from middleware
+    // do db query to find user
+    //check if oldpassword enterd is correct or not
+    // send response
+
+    const {oldPassword, newPassword, confirmPassword} = req.body
+    if(!(oldPassword && newPassword)){
+        throw new ApiError(400, "oldPassword and newPassword is required")
+    }
+
+    if (!confirmPassword) {
+        throw new ApiError(400, "confirmPassword required")
+    }
+
+    if (newPassword !== confirmPassword) {
+        throw new ApiError(407, "newPassword AND confirmPassword must be same")
+    }
+    
+    const user = await User.findById(req.user?._id)
+
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "oldPassword is incorrect")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave: false})
+
+    return res.status(201)
+    .json(
+        new ApiResponse(200, "Password Update Successfully")
+    )
+})
+
+// here in the getCurrentUser controller to fetch current user we didnt need to run mongo db query because we alredy because we already done it in verifyjwt middleware and saved whole db res object into req.user
+const getCurrentUser = asyncHandler( async (req, res)=>{
+     return res.status(200).json(
+        new ApiResponse(200, req.user, "user fetched successfully")
+     )
+     
+})
+
+const updateAccountDetails = asyncHandler( async (req, res)=>{
+    const {username, fullName, email} = req.body
+    if (!(username || fullName || email)) {
+        throw new ApiError(400, "value for update is required")
+    }
+
+    const updatedField = {}
+    if(username) updatedField.username = username
+    if(username) updatedField.fullName = fullName
+    if(username) updatedField.email = email
+
+    const user = await User.findByIdAndUpdate(req.user?._id, {
+        $set: updatedField
+    },
+    {
+        new: true
+    }).select("-password")
+    
+    return res.status(200).json(
+        new ApiResponse(200, user, "field updated successfully")
+    )
+})
+
+const updateUserAvatar = asyncHandler(async (req, res)=>{
+    const avatarLocalpath = req.file?.path
+    if (!avatarLocalpath) {
+        throw new ApiError(400, "Avatar is required")
+    }
+
+    const uploadedAvatar = await uploadOnCloudinary(avatarLocalpath)
+    if (!uploadedAvatar.url) {
+        throw new ApiError(500, "Internal server Error cloudinary Url is not Available")
+    }
+
+    const user = User.findByIdAndUpdate(req.user?._id, {
+       $set:{ avatar : uploadedAvatar.url}
+    },
+    {new: true}
+    )
+    
+    return res.status(200).json(
+        new ApiResponse(200, {}, "avatar updated Successfully")
+    )
+})
+
+const updateUserCoverImage = asyncHandler(async (req, res)=>{
+    const coverImageLocalpath = req.file?.path
+    if (!coverImageLocalpath) {
+        throw new ApiError(400, "Avatar is required")
+    }
+
+    const uploadedCoverImage = await uploadOnCloudinary(coverImageLocalpath)
+    if (!uploadedCoverImage.url) {
+        throw new ApiError(500, "Internal server Error cloudinary Url is not Available")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user?._id, {
+       $set:{coverImage : uploadedCoverImage.url}
+    },
+    {new: true}
+    ).select("-password")
+    
+    return res.status(200).json(
+        new ApiResponse(200, user , "CoverImage updated Successfully")
+    )
+})
+
+const getUserChannelProfile = asyncHandler( async (req, res) => {
+    const {username} = req.params
+    if (!username?.trim()) {
+        throw new ApiError(400, "username is missing")
+    }
+    // so here we first matched the username using $match method, now suppose here user is "chai aur code" a channel since channel is also a user next we are seeing how many subscriber chai aur code have so we used $lookup
+    const channel = await User.aggregate([{
+        //1st step find user using username
+        $match:{
+            username: username?.toLowerCase()
+        }
+    },{
+        // find subscribers using channel
+        $lookup:{
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "channel",
+            as: "subcribers"
+        }
+    },{
+        //find how many we subscribed using subscriber
+        $lookup:{
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "subscriber",
+            as: "subcribedTo"
+        }
+    },
+    {
+        $addFields:{
+            // count subscribers
+            subscriberCount : {
+                $size: "$subcribers"
+            },
+            //count how many we subscribed
+            channelsubscriberToCount : {
+                $size: "$subcribedTo"
+            },
+            //check if we are in subscribers list or not if yes send true or false 
+            isSuscribed:{
+                $cond:{
+                    if:{$in:[ req.user?._id, $subcribers.subscriber]}
+                }
+            }
+        }
+    },
+     {  //now here we use $project to send specific field only this controller is getUserChannelProfile so in profile now only below field will go not others like password, refersh token etc
+        $project:{
+            fullName:1,
+            username: 1,
+            subscriberCount: 1,
+            channelsubscriberToCount: 1,
+            avatar: 1,
+            coverImage: 1,
+        }
+    }
+])
+
+   console.log(channel);
+
+   if (!channel?.length) {
+      throw new ApiError(400, "channel does not exists")
+   }
+
+   return res.status(200).json(
+    new ApiResponse(200, channel[0], "user channel fetched successfully")
+   )
+   
+})
+
+const getUserWatchHistory = asyncHandler( async (req, res)=>{
+
+    const user = await User.aggregate([
+        {
+            $match:{
+                _id: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup:{
+                from: "vedios",
+                localField: "watchHistory",
+                foreignField:"_id",
+                as: "watchHistory",
+                pipeline:[
+                    {
+                        $lookup:{
+                            from:"users",
+                            localField: "Owner",
+                            foreignField:"_id",
+                            as: "Owner",
+                            pipeline:[
+                                {
+                                    $project:{
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1,
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields:{
+                            owner:{
+                                $first: "$Owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory,
+            "watch history fetched successfully"
+        )
+    )
+})
+
+export {registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserCoverImage, updateUserAvatar, getUserChannelProfile, getUserWatchHistory}
+    
