@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
-import { ApiError } from "./apiError";
+import { ApiError } from "./apiError.js";
+
 
 // to know more about how to delete read read DeleteUpoads.md file from nodejs notes
 const deleteUploadsFromCloudinary = async (public_id) => {
