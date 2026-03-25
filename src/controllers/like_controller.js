@@ -6,7 +6,6 @@ import { ApiError } from "../utils/apiError.js"
 import { Video } from "../models/vedio.model.js"
 import { Comment } from "../models/comments.model.js"
 import { Tweet } from "../models/tweets.model.js"
-// for more details about aggregtion pipline read AggregationRules.md from nodejs notes
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
     const {videoId} = req.params
@@ -133,7 +132,6 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 
 const getLikedVideos = asyncHandler(async (req, res) => {
     //TODO: get all liked videos
-    //need to use aggregation pipeline
     const {page, limit} = req.query
     const like = Like.aggregate([
         {

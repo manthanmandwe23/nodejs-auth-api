@@ -1,14 +1,11 @@
 import mongoose, {isValidObjectId} from "mongoose"
 import {User} from "../models/user.model.js"
-// import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiError } from "../utils/apiError.js"
 import {Video} from "../models/vedio.model.js"
 import { deleteUploadsFromCloudinary } from "../utils/deleteCloudinaryUploads.js"
-
-// for more details about aggregtion pipline read AggregationRules.md from nodejs notes
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
@@ -92,11 +89,6 @@ const publishAVideo = asyncHandler(async (req, res) => {
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
-    // vedio id from params
-    // validate
-    //run mongodb query
-    // validate 
-    // send response
     const { videoId } = req.params
     //TODO: get video by id
     if (!videoId) {
@@ -119,12 +111,7 @@ const getVideoById = asyncHandler(async (req, res) => {
 
 const updateVideo = asyncHandler(async (req, res) => {
     //TODO: update video details like title, description, thumbnail
-    // get vedio id
-    // get other details
-    // apply validation
-    // upload thumbnail on cloudinary 
-    // find vedio and updateit
-    // send response
+
     const { videoId } = req.params
     if (!videoId) {
         throw new ApiError(400, "VedioId is required")
@@ -175,16 +162,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
    if (!video) {
       throw new ApiError(400, "Video File Not Found")
    }
-
-//    To avoid orphan files, some developers delete Cloudinary files in parallel:
-//             await Promise.all([
-//             deleteUploadsFromCloudinary(video.vedioFile.public_id),
-//             deleteUploadsFromCloudinary(video.thumbnail.public_id)
-//             ])
-// Faster and cleaner.
-
    const deletedVideoFile = await deleteUploadsFromCloudinary(video.videoFile.public_id)
-//    why deletedVideoFile.result !== "ok" because cloudinary.uploader.destroy() always returns an object
    if (deletedVideoFile.result !== "ok") {
      throw new ApiError(500, "Unable to delete Video")
    }

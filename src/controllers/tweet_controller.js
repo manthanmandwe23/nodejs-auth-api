@@ -4,15 +4,6 @@ import {User} from "../models/user.model.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/apiError.js"
-// for more details about aggregtion pipline read AggregationRules.md from nodejs notes
-
-//for getUserTweets
-// you can use req.user._id, but it depends on the use case.
-// If the endpoint is “get my tweets”, then using req.user._id is correct.
-// If the endpoint is “get tweets of any user profile”, then you must take userId from req.params.
-// Short rule:
-// my tweets → req.user._id
-// any user's tweets → req.params.userId
 
 const createTweet = asyncHandler(async (req, res) => {
     //TODO: create tweet

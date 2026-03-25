@@ -5,7 +5,6 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 import { Video } from "../models/vedio.model.js"
 import { ApiError } from "../utils/apiError.js"
 
-// for more details about aggregtion pipline read AggregationRules.md from nodejs notes
 const getVideoComments = asyncHandler(async (req, res) => {
     //TODO: get all comments for a video
     const {videoId} = req.params
@@ -111,14 +110,9 @@ const deleteComment = asyncHandler(async (req, res) => {
     if (commentOwner !== currentOwner) {
         throw new ApiError(403, "UnAuthorized to Delete Comment")
     }
-    // here we already have the document instance. Mongoose documents have a .deleteOne() / .remove() method, so you don’t need another database query.
-    //instead of running 2 database query we can use Document method
-    // Document method → comment.deleteOne()
-    // Model method → Comment.findByIdAndDelete()
-
+    
     const newComment = await comment.deleteOne()
 
-    // const newComment = await Comment.findByIdAndDelete(commentId)
     if(!newComment){
         throw new ApiError(500, "Unable to DeleteComment")
     }

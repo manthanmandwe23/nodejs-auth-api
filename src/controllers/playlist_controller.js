@@ -4,8 +4,6 @@ import ApiError from "../utils/apiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
-// for more details about aggregtion pipline read AggregationRules.md from nodejs notes
-
 const createPlaylist = asyncHandler(async (req, res) => {
     //TODO: create playlist
     const {name, description} = req.body
@@ -65,14 +63,9 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(playlistId)) {
         throw new ApiError(400, "Invalid playlistId")
     }
-    
-    // so here we used .populate here .populate is replacement for $lookup because if we did not used .populate here we needed to run aggregation pipeline to join all video document and owner document but here .populate had done every thing here it is like shortcut  
-
-    // to know more you must read populateMethod.md file from nodejs notes
+   
     const playlist = await Playlist.findById(playlistId)
-    //"video" is field name
     .populate("video")
-    //here we are saying i dont want all fields from user document just give me username email
     .populate("owner", "username email")
 
     if (!playlist) {
@@ -204,17 +197,6 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     const updateDetails = {}
     if(name) updateDetails.name = name
     if(description) updateDetails.description = description
-
-   
-    // const playlist = await Playlist.findByIdAndUpdate(playlistId, {
-    //      $set:{
-         // here also if name provided it will update only name and if description is provided it will only update description so we can use both approch above and this
-    //         ...(name && {name}),
-    //         ...(description && {description})
-    //      }
-    //   },
-    //   {new : true}
-    // )
 
     const playlist= await Playlist.findByIdAndUpdate(playlistId, {
          $set: updateDetails
